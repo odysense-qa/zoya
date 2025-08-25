@@ -72,7 +72,7 @@ KTS
         ./gradlew --version || true
         ./gradlew assembleDebug --stacktrace --info 2>&1 | tee ../gradle-debug.log
         cd ..
-        # Try Flutter build as well to emit its verbose log (doesn't fail the step)
+        # Try Flutter build as well (doesn't fail the step)
         flutter build apk --debug -v 2>&1 | tee build-verbose.log || true
 
     artifacts:
