@@ -1,0 +1,28 @@
+name: zoya
+description: Local-only baby monitor (Zoya) — Flutter MVP
+publish_to: 'none'
+version: 0.1.1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_webrtc: ^0.10.8
+  bonsoir: ^2.2.0+1
+  permission_handler: ^11.3.1
+  http: ^1.2.2
+  wakelock_plus: ^1.2.6
+  google_fonts: ^6.2.1
+  provider: ^6.1.2
+  device_info_plus: ^10.1.0
+  cupertino_icons: ^1.0.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
