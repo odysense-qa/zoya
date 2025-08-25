@@ -21,25 +21,38 @@ workflows:
           flutter create .
         fi
 
+      - echo "=== Patch android/settings.gradle.kts (repos) ==="
+      - |
+        SETTINGS="android/settings.gradle.kts"
+        if [ -f "$SETTINGS" ]; then
+          cat > "$SETTINGS" <<'KTS'
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+rootProject.name = "android"
+include(":app")
+KTS
+        fi
+        echo "----- android/settings.gradle.kts -----"
+        cat android/settings.gradle.kts || true
+
       - echo "=== Prepare ==="
       - flutter clean
       - flutter pub get
       - flutter analyze || true
 
-      - echo "=== Patch Gradle (Kotlin DSL) for CI stability ==="
-      - |
-        FILE="android/app/build.gradle.kts"
-        if [ -f "$FILE" ]; then
-          sed -i.bak 's/compileSdk\s*=\s*[^0-9]*/compileSdk = 34/' "$FILE" || true
-          sed -i.bak 's/minSdk\s*=\s*[0-9]\+/minSdk = 23/' "$FILE" || true
-          sed -i.bak 's/targetSdk\s*=\s*[0-9]\+/targetSdk = 34/' "$FILE" || true
-          sed -i.bak 's/JavaVersion\.VERSION_[0-9]\+/JavaVersion.VERSION_17/g' "$FILE" || true
-          sed -i.bak 's/jvmTarget\s*=\s*"[0-9]\+"/jvmTarget = "17"/' "$FILE" || true
-        fi
-        echo "----- android/app/build.gradle.kts -----"
-        cat android/app/build.gradle.kts || true
-
-      - echo "=== Gradle properties (AndroidX + memory) ==="
+      - echo "=== Ensure gradle.properties ==="
       - |
         GP="android/gradle.properties"
         touch "$GP"
@@ -49,13 +62,17 @@ workflows:
         echo "----- android/gradle.properties -----"
         cat "$GP" || true
 
-      - echo "=== Build with Gradle directly (more diagnostics) ==="
+      - echo "=== Show app build.gradle.kts ==="
+      - cat android/app/build.gradle.kts || true
+
+      - echo "=== Build with Gradle directly (stacktrace/info) ==="
       - |
         set -o pipefail
         cd android
+        ./gradlew --version || true
         ./gradlew assembleDebug --stacktrace --info 2>&1 | tee ../gradle-debug.log
         cd ..
-        # Also try Flutter (sometimes nicer error grouping)
+        # Try Flutter build as well to emit its verbose log (doesn't fail the step)
         flutter build apk --debug -v 2>&1 | tee build-verbose.log || true
 
     artifacts:
