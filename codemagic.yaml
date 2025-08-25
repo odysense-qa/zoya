@@ -1,6 +1,6 @@
 workflows:
-  android_debug_apk_diag:
-    name: Android Debug APK (deep diagnostics, safe YAML)
+  android_debug_apk:
+    name: Android Debug APK
     environment:
       flutter: stable
       java: 17
@@ -10,62 +10,32 @@ workflows:
         - $HOME/.gradle/caches
         - $FCI_BUILD_DIR/build
     scripts:
-      - echo "=== Versions ==="
       - flutter --version
-      - java -version || true
-
-      - echo "=== Ensure platform folders ==="
-      - |
-        if [ ! -d "android" ]; then
-          echo "android/ missing -> running 'flutter create .'"
-          flutter create .
-        fi
-
-      - echo "=== Write android/settings.gradle.kts via base64 (avoids YAML parsing issues) ==="
-      - |
-        SETTINGS="android/settings.gradle.kts"
-        cat > "$SETTINGS.b64" <<'B64'
-cGx1Z2luTWFuYWdlbWVudCB7CiAgICByZXBvc2l0b3JpZXMgewogICAgICAgIGdvb2dsZSgpCiAg
-ICAgICAgbWF2ZW5DZW50cmFsKCkKICAgICAgICBncmFkbGVQbHVnaW5Qb3J0YWwoKQogICAgfQp9
-CmRlcGVuZGVuY3lSZXNvbHV0aW9uTWFuYWdlbWVudCB7CiAgICByZXBvc2l0b3JpZXNNb2RlLnNl
-dChSZXBvc2l0b3JpZXNNb2RlLkZBSUxfT05fUFJPSkVDVF9SRVBPUykKICAgIHJlcG9zaXRvcmll
-cyB7CiAgICAgICAgZ29vZ2xlKCkKICAgICAgICBtYXZlbkNlbnRyYWwoKQogICAgfQp9CnJvb3RQ
-cm9qZWN0Lm5hbWUgPSAiYW5kcm9pZCIKaW5jbHVkZSgiOmFwcCIpCg==
-B64
-        base64 --decode "$SETTINGS.b64" > "$SETTINGS"
-        rm -f "$SETTINGS.b64"
-        echo "----- android/settings.gradle.kts -----"
-        cat "$SETTINGS"
-
-      - echo "=== Prepare ==="
       - flutter clean
       - flutter pub get
-      - flutter analyze || true
-
-      - echo "=== Ensure gradle.properties ==="
-      - |
-        GP="android/gradle.properties"
-        touch "$GP"
-        grep -q '^android.useAndroidX=' "$GP" || echo 'android.useAndroidX=true' >> "$GP"
-        grep -q '^android.enableJetifier=' "$GP" || echo 'android.enableJetifier=true' >> "$GP"
-        grep -q '^org.gradle.jvmargs=' "$GP" || echo 'org.gradle.jvmargs=-Xmx4g -Dkotlin.daemon.jvm.options=-Xmx2g' >> "$GP"
-        echo "----- android/gradle.properties -----"
-        cat "$GP" || true
-
-      - echo "=== Show app build.gradle.kts (for sanity) ==="
-      - cat android/app/build.gradle.kts || true
-
-      - echo "=== Build with Gradle directly (stacktrace/info) ==="
       - |
         set -o pipefail
-        cd android
-        ./gradlew --version || true
-        ./gradlew assembleDebug --stacktrace --info 2>&1 | tee ../gradle-debug.log
-        cd ..
-        # Also try Flutter build (won't fail the step so we still get logs)
-        flutter build apk --debug -v 2>&1 | tee build-verbose.log || true
-
+        flutter build apk --debug -v 2>&1 | tee build-verbose.log
     artifacts:
-      - gradle-debug.log
       - build-verbose.log
       - build/app/outputs/flutter-apk/app-debug.apk
+
+  android_release:
+    name: Android Release (APK + AAB)
+    environment:
+      flutter: stable
+      java: 17
+    cache:
+      cache_paths:
+        - ~/.pub-cache
+        - $HOME/.gradle/caches
+        - $FCI_BUILD_DIR/build
+    scripts:
+      - flutter --version
+      - flutter clean
+      - flutter pub get
+      - flutter build apk --release
+      - flutter build appbundle --release
+    artifacts:
+      - build/app/outputs/flutter-apk/app-release.apk
+      - build/app/outputs/bundle/release/app-release.aab
