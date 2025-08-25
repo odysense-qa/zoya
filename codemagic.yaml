@@ -1,0 +1,37 @@
+workflows:
+  android_debug_apk:
+    name: Android Debug APK (unsigned)
+    environment:
+      flutter: stable
+    cache:
+      cache_paths:
+        - ~/.pub-cache
+        - $HOME/.gradle/caches
+        - $FCI_BUILD_DIR/build
+    scripts:
+      - flutter --version
+      - flutter clean
+      - flutter pub get
+      - flutter build apk --debug
+    artifacts:
+      - build/app/outputs/flutter-apk/app-debug.apk
+
+  android_release:
+    name: Android Release (APK + AAB)
+    environment:
+      flutter: stable
+    cache:
+      cache_paths:
+        - ~/.pub-cache
+        - $HOME/.gradle/caches
+        - $FCI_BUILD_DIR/build
+    scripts:
+      - flutter --version
+      - flutter clean
+      - flutter pub get
+      # Build release artifacts (unsigned unless signing is configured in UI)
+      - flutter build apk --release
+      - flutter build appbundle --release
+    artifacts:
+      - build/app/outputs/flutter-apk/app-release.apk
+      - build/app/outputs/bundle/release/app-release.aab
