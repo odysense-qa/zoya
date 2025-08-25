@@ -1,25 +1,38 @@
 workflows:
-  android_debug_apk:
-    name: Android Debug APK (unsigned)
+  android_debug_apk_diag:
+    name: Android Debug APK (diagnostic)
     environment:
       flutter: stable
+      java: 17
     cache:
       cache_paths:
         - ~/.pub-cache
         - $HOME/.gradle/caches
         - $FCI_BUILD_DIR/build
     scripts:
+      - echo "=== Versions ==="
       - flutter --version
+      - java -version || true
+      - echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+      - echo "JAVA_HOME=$JAVA_HOME"
+      - echo "=== Prepare ==="
       - flutter clean
       - flutter pub get
-      - flutter build apk --debug
+      - flutter analyze || true
+      - chmod +x android/gradlew
+      - echo "=== Build (verbose) ==="
+      - |
+        set -o pipefail
+        flutter build apk --debug -v 2>&1 | tee build-verbose.log
     artifacts:
+      - build-verbose.log
       - build/app/outputs/flutter-apk/app-debug.apk
 
   android_release:
     name: Android Release (APK + AAB)
     environment:
       flutter: stable
+      java: 17
     cache:
       cache_paths:
         - ~/.pub-cache
@@ -29,7 +42,7 @@ workflows:
       - flutter --version
       - flutter clean
       - flutter pub get
-      # Build release artifacts (unsigned unless signing is configured in UI)
+      - chmod +x android/gradlew
       - flutter build apk --release
       - flutter build appbundle --release
     artifacts:
