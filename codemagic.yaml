@@ -1,6 +1,6 @@
 workflows:
   android_debug_apk_diag:
-    name: Android Debug APK (deep diagnostics)
+    name: Android Debug APK (deep diagnostics, safe YAML)
     environment:
       flutter: stable
       java: 17
@@ -21,31 +21,21 @@ workflows:
           flutter create .
         fi
 
-      - echo "=== Patch android/settings.gradle.kts (repos) ==="
+      - echo "=== Write android/settings.gradle.kts via base64 (avoids YAML parsing issues) ==="
       - |
         SETTINGS="android/settings.gradle.kts"
-        if [ -f "$SETTINGS" ]; then
-          cat > "$SETTINGS" <<'KTS'
-pluginManagement {
-    repositories {
-        google()
-        mavenCentral()
-        gradlePluginPortal()
-    }
-}
-dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-    repositories {
-        google()
-        mavenCentral()
-    }
-}
-rootProject.name = "android"
-include(":app")
-KTS
-        fi
+        cat > "$SETTINGS.b64" <<'B64'
+cGx1Z2luTWFuYWdlbWVudCB7CiAgICByZXBvc2l0b3JpZXMgewogICAgICAgIGdvb2dsZSgpCiAg
+ICAgICAgbWF2ZW5DZW50cmFsKCkKICAgICAgICBncmFkbGVQbHVnaW5Qb3J0YWwoKQogICAgfQp9
+CmRlcGVuZGVuY3lSZXNvbHV0aW9uTWFuYWdlbWVudCB7CiAgICByZXBvc2l0b3JpZXNNb2RlLnNl
+dChSZXBvc2l0b3JpZXNNb2RlLkZBSUxfT05fUFJPSkVDVF9SRVBPUykKICAgIHJlcG9zaXRvcmll
+cyB7CiAgICAgICAgZ29vZ2xlKCkKICAgICAgICBtYXZlbkNlbnRyYWwoKQogICAgfQp9CnJvb3RQ
+cm9qZWN0Lm5hbWUgPSAiYW5kcm9pZCIKaW5jbHVkZSgiOmFwcCIpCg==
+B64
+        base64 --decode "$SETTINGS.b64" > "$SETTINGS"
+        rm -f "$SETTINGS.b64"
         echo "----- android/settings.gradle.kts -----"
-        cat android/settings.gradle.kts || true
+        cat "$SETTINGS"
 
       - echo "=== Prepare ==="
       - flutter clean
@@ -62,7 +52,7 @@ KTS
         echo "----- android/gradle.properties -----"
         cat "$GP" || true
 
-      - echo "=== Show app build.gradle.kts ==="
+      - echo "=== Show app build.gradle.kts (for sanity) ==="
       - cat android/app/build.gradle.kts || true
 
       - echo "=== Build with Gradle directly (stacktrace/info) ==="
@@ -72,7 +62,7 @@ KTS
         ./gradlew --version || true
         ./gradlew assembleDebug --stacktrace --info 2>&1 | tee ../gradle-debug.log
         cd ..
-        # Try Flutter build as well (doesn't fail the step)
+        # Also try Flutter build (won't fail the step so we still get logs)
         flutter build apk --debug -v 2>&1 | tee build-verbose.log || true
 
     artifacts:
